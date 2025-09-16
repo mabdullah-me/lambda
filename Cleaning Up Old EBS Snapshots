@@ -1,0 +1,15 @@
+import boto3
+from datetime import datetime, timedelta
+
+ec2 = boto3.client("ec2")
+
+def lambda_handler(event, context):
+    retention_days = 7
+    delete_time = datetime.now() - timedelta(days=retention_days)
+
+    snapshots = ec2.describe_snapshots(OwnerIds=['self'])['Snapshots']
+    for snap in snapshots:
+        start_time = snap['StartTime'].replace(tzinfo=None)
+        if start_time < delete_time:
+            ec2.delete_snapshot(SnapshotId=snap['SnapshotId'])
+            print(f"Deleted {snap['SnapshotId']}")
