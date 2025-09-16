@@ -17,6 +17,7 @@ def lambda_handler(event, context):
     # Download the zip file into memory
     zip_obj = s3.get_object(Bucket=source_bucket, Key=zip_key)
 # creates an in-memory file-like object, so we don’t need to write to disk.
+# Because Lambda has only 512MB of /tmp space, and using in-memory buffer is faster and avoids file I/O. But if the files are huge, /tmp might be safer because of memory limits.”
     buffer = io.BytesIO(zip_obj["Body"].read())
 
     # Open and filter files by regex
