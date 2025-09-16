@@ -1,0 +1,35 @@
+import boto3
+import zipfile
+import io
+import re
+import os
+
+# S3 client for reading/writing objects.
+s3 = boto3.client("s3")
+
+
+def lambda_handler(event, context):
+    # Get bucket and object key from event
+    source_bucket = event['Records'][0]['s3']['bucket']['name']
+    zip_key = event['Records'][0]['s3']['object']['key']
+    target_bucket = os.environ.get("TARGET_BUCKET")
+
+    # Download the zip file into memory
+    zip_obj = s3.get_object(Bucket=source_bucket, Key=zip_key)
+# creates an in-memory file-like object, so we don’t need to write to disk.
+    buffer = io.BytesIO(zip_obj["Body"].read())
+
+    # Open and filter files by regex
+    with zipfile.ZipFile(buffer) as z:
+        for file_name in z.namelist():
+            if re.match(r".*\.csv$", file_name):  # Only CSV files
+                extracted = z.read(file_name)
+                # Upload extracted file to target bucket
+                s3.put_object(
+                    Bucket=target_bucket,
+                    Key=file_name,
+                    Body=extracted
+                )
+                print(f"Uploaded {file_name} to {target_bucket}")
+
+    return {"statusCode": 200, "body": "Processed successfully"}
